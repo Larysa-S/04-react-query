@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { Toaster, toast } from "react-hot-toast";
+import ReactPaginate from "react-paginate";
 
-import MovieService from "../../services/movieService";
+import { fetchMoviesByQuery } from "../../services/movieService";
 import type { Movie } from "../../types/movie";
 
 import SearchBar from "../SearchBar/SearchBar";
@@ -10,50 +11,39 @@ import MovieGrid from "../MovieGrid/MovieGrid";
 import Loader from "../Loader/Loader";
 import ErrorMessage from "../ErrorMessage/ErrorMessage";
 import MovieModal from "../MovieModal/MovieModal";
-import LoadMoreBtn from "../LoadMoreBtn/LoadMoreBtn";
 
 import css from "./App.module.css";
 
 function App() {
   const [query, setQuery] = useState<string>("");
+  const [page, setPage] = useState<number>(1); // Стан для номера сторінки
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
 
-  // useInfiniteQuery для пагінації
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading,
-    isError,
-  } = useInfiniteQuery({
-    queryKey: ["movies", query],
-    queryFn: ({ pageParam = 1 }) =>
-      MovieService.fetchMoviesByQuery(query, pageParam as number),
-    getNextPageParam: (lastPage) => {
-      // Якщо поточна сторінка менша за загальну, повертається наступний номер
-      return lastPage.page < lastPage.total_pages
-        ? lastPage.page + 1
-        : undefined;
-    },
+  const { data, isLoading, isError, isFetching } = useQuery({
+    // Додаю page у queryKey для коректного кешування кожної сторінки
+    queryKey: ["movies", query, page],
+    queryFn: () => fetchMoviesByQuery(query, page),
     enabled: query.length > 0,
-    initialPageParam: 1,
+    // Використовую keepPreviousData, щоб уникнути миготіння (placeholderData)
+    placeholderData: keepPreviousData,
   });
-
-  // Об'єдную результати всіх завантажених сторінок в один масив
-  const movies = data?.pages.flatMap((page) => page.results) ?? [];
 
   const handleSearch = (newQuery: string) => {
     if (newQuery === query) return;
     setQuery(newQuery);
+    setPage(1); // Скидаю на першу сторінку при новому пошуку
   };
 
-  // Виводжу повідомлення, якщо за запитом нічого не знайдено
+  const handlePageClick = (event: { selected: number }) => {
+    setPage(event.selected + 1);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   useEffect(() => {
-    if (query && data && movies.length === 0 && !isLoading) {
+    if (query && data && data.results.length === 0 && !isLoading) {
       toast.error("No movies found for your request.");
     }
-  }, [data, query, movies.length, isLoading]);
+  }, [data, query, isLoading]);
 
   return (
     <div className={css.app}>
@@ -63,16 +53,29 @@ function App() {
       <main className={css.container}>
         {isError && <ErrorMessage />}
 
-        {movies.length > 0 && (
-          <MovieGrid movies={movies} onSelect={setSelectedMovie} />
-        )}
+        {/* Показую Loader при першому завантаженні або зміні сторінок */}
+        {(isLoading || isFetching) && <Loader />}
 
-        {/* Стан завантаження (первинне або підвантаження сторінок) */}
-        {(isLoading || isFetchingNextPage) && <Loader />}
+        {data && data.results.length > 0 && (
+          <>
+            <MovieGrid movies={data.results} onSelect={setSelectedMovie} />
 
-        {/* Кнопка Load More з'являється лише якщо є що завантажувати далі */}
-        {hasNextPage && !isFetchingNextPage && !isLoading && (
-          <LoadMoreBtn onClick={() => fetchNextPage()} />
+            <ReactPaginate
+              breakLabel="..."
+              nextLabel="next >"
+              onPageChange={handlePageClick}
+              pageRangeDisplayed={3}
+              pageCount={data.total_pages > 500 ? 500 : data.total_pages} // TMDB обмежує пагінацію 500 сторінками
+              previousLabel="< previous"
+              renderOnZeroPageCount={null}
+              forcePage={page - 1}
+              containerClassName={css.pagination}
+              pageClassName={css.pageItem}
+              activeClassName={css.activePage}
+              previousClassName={css.prevItem}
+              nextClassName={css.nextItem}
+            />
+          </>
         )}
       </main>
 

@@ -1,3 +1,81 @@
 .app {
   padding: 0 16px;
 }
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin: 40px 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Окремі елементи (числа) */
+.pageItem {
+  cursor: pointer;
+}
+
+.pageItem a {
+  display: block;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.pageItem a:hover {
+  background-color: var(--accent-bg);
+  border-color: var(--accent);
+}
+
+/* Активна сторінка */
+.activePage a {
+  background-color: var(--accent) !important;
+  color: #ffffff !important;
+  border-color: var(--accent) !important;
+}
+
+/* Кнопки Назад та Вперед */
+.prevItem a,
+.nextItem a {
+  padding: 8px 16px;
+  font-weight: bold;
+  color: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.prevItem a:hover,
+.nextItem a:hover {
+  background-color: var(--accent-bg);
+}
+
+/* Стилізація крапок (...) */
+.pagination :global(.break-me) a {
+  cursor: default;
+  border: none;
+}
+
+/* Стиль для заблокованих кнопок (якщо ви на 1 сторінці) */
+.pagination :global(.disabled) a {
+  color: var(--border);
+  cursor: not-allowed;
+  background-color: transparent;
+}
+
+@media (max-width: 768px) {
+  .pagination {
+    gap: 4px;
+  }
+  .pageItem a {
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+}
