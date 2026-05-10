@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Секрети та налаштування оточення
+.env
+.env.production
+.env.local
+.env.*.local

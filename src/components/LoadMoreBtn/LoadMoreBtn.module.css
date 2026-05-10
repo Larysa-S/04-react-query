@@ -1,0 +1,57 @@
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 32px 0;
+  width: 100%;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 160px;
+  padding: 12px 24px;
+
+  /* Використання ваших глобальних змінних */
+  font-family: var(--sans);
+  font-size: 16px;
+  font-weight: 500;
+  color: #ffffff;
+  background-color: var(--accent);
+
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow);
+}
+
+.button:hover {
+  /* Трохи затемнюємо акцент при наведенні */
+  filter: brightness(0.9);
+  box-shadow: 0 8px 20px -5px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
+}
+
+.button:active {
+  transform: translateY(0);
+  filter: brightness(0.8);
+}
+
+.button:disabled {
+  background-color: var(--border);
+  color: var(--text);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Адаптивність для мобільних */
+@media (max-width: 768px) {
+  .button {
+    width: 90%; /* На маленьких екранах кнопка майже на всю ширину */
+    padding: 14px;
+  }
+}

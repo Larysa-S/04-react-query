@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { Toaster, toast } from "react-hot-toast";
-import MovieService from "../../services/movieService";
 
+import MovieService from "../../services/movieService";
 import type { Movie } from "../../types/movie";
 
 import SearchBar from "../SearchBar/SearchBar";
@@ -9,51 +10,69 @@ import MovieGrid from "../MovieGrid/MovieGrid";
 import Loader from "../Loader/Loader";
 import ErrorMessage from "../ErrorMessage/ErrorMessage";
 import MovieModal from "../MovieModal/MovieModal";
+import LoadMoreBtn from "../LoadMoreBtn/LoadMoreBtn";
 
 import css from "./App.module.css";
 
 function App() {
-  const [movies, setMovies] = useState<Movie[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<boolean>(false);
+  const [query, setQuery] = useState<string>("");
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
 
-  const handleSearch = async (query: string) => {
-    try {
-      setMovies([]);
-      setLoading(true);
-      setError(false);
+  // useInfiniteQuery для пагінації
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+  } = useInfiniteQuery({
+    queryKey: ["movies", query],
+    queryFn: ({ pageParam = 1 }) =>
+      MovieService.fetchMoviesByQuery(query, pageParam as number),
+    getNextPageParam: (lastPage) => {
+      // Якщо поточна сторінка менша за загальну, повертається наступний номер
+      return lastPage.page < lastPage.total_pages
+        ? lastPage.page + 1
+        : undefined;
+    },
+    enabled: query.length > 0,
+    initialPageParam: 1,
+  });
 
-      const data = await MovieService.fetchMoviesByQuery(query);
+  // Об'єдную результати всіх завантажених сторінок в один масив
+  const movies = data?.pages.flatMap((page) => page.results) ?? [];
 
-      // Перевірка на успішність запиту та наявність результатів
-      if (data.results.length === 0) {
-        toast.error("No movies found for your request.");
-      } else {
-        setMovies(data.results);
-      }
-    } catch (err) {
-      console.error(err);
-      setError(true);
-      toast.error("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+  const handleSearch = (newQuery: string) => {
+    if (newQuery === query) return;
+    setQuery(newQuery);
   };
+
+  // Виводжу повідомлення, якщо за запитом нічого не знайдено
+  useEffect(() => {
+    if (query && data && movies.length === 0 && !isLoading) {
+      toast.error("No movies found for your request.");
+    }
+  }, [data, query, movies.length, isLoading]);
 
   return (
     <div className={css.app}>
       <SearchBar onSubmit={handleSearch} />
-
-      <Toaster position="top-right" reverseOrder={false} />
+      <Toaster position="top-right" />
 
       <main className={css.container}>
-        {error && <ErrorMessage />}
-        {loading && <Loader />}
+        {isError && <ErrorMessage />}
 
-        {/* Галерея рендериться лише якщо є фільми і немає помилки */}
-        {movies.length > 0 && !error && !loading && (
+        {movies.length > 0 && (
           <MovieGrid movies={movies} onSelect={setSelectedMovie} />
+        )}
+
+        {/* Стан завантаження (первинне або підвантаження сторінок) */}
+        {(isLoading || isFetchingNextPage) && <Loader />}
+
+        {/* Кнопка Load More з'являється лише якщо є що завантажувати далі */}
+        {hasNextPage && !isFetchingNextPage && !isLoading && (
+          <LoadMoreBtn onClick={() => fetchNextPage()} />
         )}
       </main>
 
